@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '../firebase/config';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { auth, db } from "../firebase/config";
+import { doc, getDoc, setDoc, collection, addDoc } from "firebase/firestore";
 import { useNavigate } from 'react-router-dom';
 import './Login.css';
 
@@ -19,6 +19,28 @@ const Login = () => {
     const role = localStorage.getItem('selectedRole');
     setSelectedRole(role);
   }, []);
+
+  // Function to create HOD approval request
+  const createHODRequest = async (studentId, studentData) => {
+    try {
+      // Check if request already exists
+      const existingRequestDoc = await getDoc(doc(db, 'hodRequests', studentId));
+      if (!existingRequestDoc.exists()) {
+        await setDoc(doc(db, 'hodRequests', studentId), {
+          studentId: studentId,
+          studentName: studentData.name,
+          studentEmail: studentData.email,
+          department: studentData.department || 'CSE',
+          branch: studentData.branch,
+          status: 'pending',
+          createdAt: new Date().toISOString()
+        });
+        console.log('HOD approval request created');
+      }
+    } catch (error) {
+      console.error('Error creating HOD request:', error);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,6 +74,18 @@ const Login = () => {
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
           const userData = userDoc.data();
+          
+          // Check approval status for students
+          if (selectedRole === 'student') {
+            if (!userData.approved) {
+              // Create HOD request if not already exists
+              await createHODRequest(user.uid, userData);
+              localStorage.setItem(selectedRole, JSON.stringify(userData));
+              navigate('/student/approval-pending');
+              return;
+            }
+          }
+          
           localStorage.setItem(selectedRole, JSON.stringify(userData));
           
           // Navigate based on role
@@ -76,6 +110,8 @@ const Login = () => {
             newUserData.branch = 'Computer Science';
             newUserData.cgpa = '0.0';
             newUserData.year = '2024';
+            newUserData.department = 'CSE';
+            newUserData.approved = false; // Students need HOD approval
           } else if (selectedRole === 'manager') {
             newUserData.department = 'Placement Office';
             newUserData.experience = '0 years';
@@ -110,6 +146,8 @@ const Login = () => {
           newUserData.branch = 'Computer Science';
           newUserData.cgpa = '0.0';
           newUserData.year = '2024';
+          newUserData.department = 'CSE';
+          newUserData.approved = false; // Students need HOD approval
         } else if (selectedRole === 'manager') {
           newUserData.department = 'Placement Office';
           newUserData.experience = '0 years';

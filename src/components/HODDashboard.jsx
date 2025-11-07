@@ -1,11 +1,81 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { signOut } from "firebase/auth";
-import { auth } from "../firebase/config";
+import { auth, db } from "../firebase/config";
+import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
 export default function HODDashboard() {
   const hod = JSON.parse(localStorage.getItem("hod")) || {};
   const navigate = useNavigate();
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchPendingRequests();
+  }, []);
+
+  const fetchPendingRequests = async () => {
+    try {
+      const hodDepartment = hod.department || 'Computer Science';
+      const q = query(
+        collection(db, 'hodRequests'),
+        where('department', '==', 'CSE'), // Match department
+        where('status', '==', 'pending')
+      );
+      const snapshot = await getDocs(q);
+      const requests = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setPendingRequests(requests);
+    } catch (error) {
+      console.error('Error fetching pending requests:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async (request) => {
+    try {
+      // Update HOD request status
+      await updateDoc(doc(db, 'hodRequests', request.id), {
+        status: 'approved',
+        approvedAt: new Date().toISOString(),
+        approvedBy: hod.name || 'HOD'
+      });
+
+      // Update student approval status
+      await updateDoc(doc(db, 'students', request.studentId), {
+        approved: true,
+        approvedAt: new Date().toISOString()
+      });
+
+      // Remove from pending list
+      setPendingRequests(prev => prev.filter(req => req.id !== request.id));
+      
+      alert(`✅ Student ${request.studentName} approved successfully!`);
+    } catch (error) {
+      console.error('Error approving student:', error);
+      alert('Error approving student. Please try again.');
+    }
+  };
+
+  const handleReject = async (request) => {
+    try {
+      await updateDoc(doc(db, 'hodRequests', request.id), {
+        status: 'rejected',
+        rejectedAt: new Date().toISOString(),
+        rejectedBy: hod.name || 'HOD'
+      });
+
+      setPendingRequests(prev => prev.filter(req => req.id !== request.id));
+      
+      alert(`❌ Student ${request.studentName} request rejected.`);
+    } catch (error) {
+      console.error('Error rejecting student:', error);
+      alert('Error rejecting student. Please try again.');
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -125,6 +195,73 @@ export default function HODDashboard() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Student Approval Requests */}
+      <div className="bg-white shadow p-6 rounded-lg mb-6">
+        <h3 className="text-xl font-bold mb-4">Student Approval Requests</h3>
+        
+        {loading ? (
+          <div className="text-center py-8">
+            <div className="text-lg">Loading approval requests...</div>
+          </div>
+        ) : pendingRequests.length > 0 ? (
+          <div className="space-y-4">
+            {pendingRequests.map((request) => (
+              <div key={request.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-semibold">
+                        {request.studentName?.charAt(0)?.toUpperCase() || 'S'}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-800">{request.studentName}</h4>
+                        <p className="text-sm text-gray-600">{request.studentEmail}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium text-gray-700">Department:</span>
+                        <span className="ml-2 text-gray-600">{request.department}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Branch:</span>
+                        <span className="ml-2 text-gray-600">{request.branch}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Requested:</span>
+                        <span className="ml-2 text-gray-600">
+                          {new Date(request.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex space-x-2 ml-4">
+                    <button
+                      onClick={() => handleApprove(request)}
+                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium"
+                    >
+                      ✅ Approve
+                    </button>
+                    <button
+                      onClick={() => handleReject(request)}
+                      className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm font-medium"
+                    >
+                      ❌ Reject
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <div className="text-gray-500 mb-2">No pending approval requests</div>
+            <p className="text-sm text-gray-400">All students in your department are approved</p>
+          </div>
+        )}
       </div>
 
       {/* Administrative Actions */}

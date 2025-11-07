@@ -15,6 +15,7 @@ export default function AddPlacementDrive() {
     applicationDeadline: '',
     interviewDate: '',
     eligibilityCriteria: '',
+    cgpaCriteria: '',
     contactEmail: '',
     additionalInfo: ''
   });
@@ -48,6 +49,7 @@ export default function AddPlacementDrive() {
       const driveData = {
         ...formData,
         salaryOffered: parseFloat(formData.salaryOffered),
+        cgpaCriteria: parseFloat(formData.cgpaCriteria) || 0,
         createdBy: user.uid,
         createdByEmail: user.email,
         createdAt: new Date().toISOString(),
@@ -147,6 +149,25 @@ export default function AddPlacementDrive() {
                 step="0.1"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                 placeholder="e.g., 12.5"
+              />
+            </div>
+
+            {/* CGPA Criteria */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Minimum CGPA Required *
+              </label>
+              <input
+                type="number"
+                name="cgpaCriteria"
+                value={formData.cgpaCriteria}
+                onChange={handleInputChange}
+                required
+                min="0"
+                max="10"
+                step="0.1"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                placeholder="e.g., 7.5"
               />
             </div>
 

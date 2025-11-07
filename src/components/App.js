@@ -6,6 +6,7 @@ import StudentDashboard from "./StudentDashboard.jsx";
 import ManagerDashboard from "./ManagerDashboard.jsx";
 import HODDashboard from "./HODDashboard.jsx";
 import AddPlacementDrive from "./AddPlacementDrive.jsx";
+import ApprovalPending from "./ApprovalPending.jsx";
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/" element={<RoleSelection />} />
         <Route path="/login" element={<Login />} />
         <Route path="/student/dashboard" element={<StudentDashboard />} />
+        <Route path="/student/approval-pending" element={<ApprovalPending />} />
         <Route path="/manager/dashboard" element={<ManagerDashboard />} />
         <Route path="/manager/add-drive" element={<AddPlacementDrive />} />
         <Route path="/hod/dashboard" element={<HODDashboard />} />
